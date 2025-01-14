@@ -1,1 +1,107 @@
-hello world
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ETF overview by DKB + ING</title>
+<link href="https://unpkg.com/tabulator-tables@6.3.0/dist/css/tabulator.min.css" rel="stylesheet">
+<script type="text/javascript" src="https://unpkg.com/tabulator-tables@6.3.0/dist/js/tabulator.min.js"></script>
+<style>
+    :root {
+        --header-height: 80px;
+        --footer-height: 35px;
+        --row-height: 28px;
+        --color-bckg: #e6e6e6;
+        --color: #555;
+    }
+    /* Ensure the table takes the full height of the viewport */
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background-color: var(--color-bckg);
+    }
+    h3 {
+        margin: 0;
+        padding: 10px;}
+    #main-head {
+        text-align: center;
+        color: var(--color);
+        height: 6%
+    }
+    #main-table { height: 90%; }
+    .tabulator-header { height: var(--header-height); }
+    .tabulator-footer { height: var(--footer-height); }
+    .tabulator-row { height: var(--row-height); }
+    .tabulator, .tabulator-footer, .tabulator-paginator {
+        background-color: var(--color-bckg);
+        font-size: 4mm;
+        font-family: sans-serif;
+    }
+</style>
+</head>
+<body>
+<div id="main-head">
+<h3>Overview of ETFs offered by DKB + ING at reduced costs</h3></div>
+<div id="main-table"></div>
+
+<script>
+function columnNameToTitle(colName) {
+    let lst = colName.split("_").map(word => {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+    let index = lst.findIndex(str => str.includes("Year"));
+    let beforeWord = lst;
+    let afterWord = ["&nbsp;"];
+    if (index > -1 && index < lst.length-1) {
+        // Split the list at the found index
+        beforeWord = lst.slice(0, index+1);
+        afterWord = lst.slice(index+1);
+    }
+    return beforeWord.join(' ')+"<br/>"+afterWord.join(' ');
+}
+// Function to calculate the number of rows that fit into the document
+function calculatePageSize() {
+    const mainHeadHeight = document.getElementById('main-head').clientHeight;
+    console.log("mainHeadHeight", mainHeadHeight)
+    const tableHeight = document.getElementById('main-table').clientHeight;
+    const rowHeight = getComputedStyle(document.documentElement).getPropertyValue('--row-height').trim().replace("px","");
+    const headerHeight = getComputedStyle(document.documentElement).getPropertyValue('--header-height').trim().replace("px","");
+    const paginationHeight = getComputedStyle(document.documentElement).getPropertyValue('--footer-height').trim().replace("px","");
+    //const paginationHeight = 50; // Approximate height of the pagination controls, adjust as needed
+    const availableHeight = tableHeight - headerHeight - paginationHeight;
+    const pageSize = Math.floor(availableHeight / rowHeight);
+    return pageSize;
+}
+// Initialize Tabulator with minimal configuration
+// TODO: https://github.com/olifolkerd/tabulator/issues/4494
+var table = new Tabulator("#main-table", {
+    pagination: "local", // Enable local pagination
+    paginationSize: calculatePageSize(), // Number of rows per page
+    paginationSizeSelector: [10, 20, 30, 50, true],
+    movableColumns: true, // Enable column moving
+    ajaxURL: "all.json", // URL to the JSON file
+    ajaxConfig: "GET", // HTTP method
+    ajaxResponse: function(url, params, response){
+        // Extract column names and data from the response
+        var columns = response.columns.map(
+            colName => ({title: columnNameToTitle(colName),
+                         field: colName,
+                         hozAlign: "right",
+                         headerFilter:"input"
+            }));
+        var data = response.data.map(row => {
+            var rowObj = {};
+            columns.forEach((col, index) => {
+                rowObj[col.field] = row[index];
+            });
+            return rowObj;
+        });
+        // Set the columns dynamically
+        table.setColumns(columns);
+        // Return the data from the response
+        return data;
+    }
+});
+</script>
+</body>
+</html>
